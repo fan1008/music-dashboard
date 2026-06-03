@@ -1,0 +1,37 @@
+name: Daily Spotify Data Refresh
+
+on:
+  schedule:
+    - cron: '0 16 * * *' # 每天國際標準時 16:00 (即台灣時間 00:00) 自動執行
+  workflow_dispatch: # 允許你在 GitHub 介面上手動點擊按鈕強制觸發更新
+
+jobs:
+  refresh-data:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-node-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Run ETL Script
+      env:
+        SPOTIPY_CLIENT_ID: ${{ secrets.SPOTIPY_CLIENT_ID }}
+        SPOTIPY_CLIENT_SECRET: ${{ secrets.SPOTIPY_CLIENT_SECRET }}
+      run: |
+        python fetch_data.py
+
+    - name: Commit and Push Database Changes
+      run: |
+        git config --global user.name "GitHub Actions Bot"
+        git config --global user.email "actions@github.com"
+        git add spotify_tracks.db
+        git commit -m "Automated daily data update [skip ci]" || exit 0
+        git push
